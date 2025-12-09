@@ -2,105 +2,131 @@ import sys
 import numpy as np
 import cv2 as cv
 
-from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QFileDialog,
-    QLabel,
+    QApplication, QMainWindow, QFileDialog, QLabel,
+    QPushButton, QWidget, QVBoxLayout, QHBoxLayout
 )
-
 from PyQt6.QtGui import (
-    QImage,
-    QPixmap,
-    QMouseEvent,
-    QWheelEvent
+    QImage, QPixmap, QMouseEvent, QWheelEvent
 )
+from PyQt6.QtCore import Qt
 
 
-class Image_Viewer_Base(QMainWindow):
-    def __init__(self, H_show: int = 400, W_show: int = 600):
+
+
+class ImageViewer(QMainWindow):
+    def __init__(self):
         super().__init__()
 
-        # ---------------------------
-        # 图像、矩阵初始化
-        # ---------------------------
-        self.image_cv = self.init_image_base()
+        # -----------------------------
+        # 基础变量
+        # -----------------------------
+        self.image_cv = None
         self.matrix_global = np.identity(3, dtype=np.float32)
 
-        # 拖动状态
         self.dragging = False
         self.last_mouse_pos = None
 
-        # ---------------------------
-        # UI 组件
-        # ---------------------------
-        self.lb_img = QLabel()
-        self.H_show = H_show
-        self.W_show = W_show
-        self.init_ui_base()
-        self.refresh_image()
+        # -----------------------------
+        # UI初始化
+        # -----------------------------
+        self.setWindowTitle("图片查看器 Image Viewer")
 
-    # --------------------------------------------------------
-    # UI 初始化
-    # --------------------------------------------------------
-    def init_ui_base(self):
-        self.setWindowTitle('Image Viewer')
-        self.lb_img.setFixedHeight(self.H_show)
-        self.lb_img.setFixedWidth(self.W_show)
-        self.setCentralWidget(self.lb_img)
+        self.lb_img = QLabel("请加载图片")
+        self.lb_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-    # --------------------------------------------------------
+        self.lb_img.setStyleSheet(
+            """
+            background-color: #ddd;
+            border: 1px solid #888;
+            font-size: 28px;          /* 字体大小 */
+            color: #555;              /* 字体颜色更柔和 */
+            font-weight: bold;        /* 粗体 */
+            """
+        )
+        self.lb_img.setFixedSize(800, 600)
+
+        # 选择图片按钮
+        self.btn_load = QPushButton("选择图片")
+        self.btn_load.setFixedHeight(40)
+        self.btn_load.setStyleSheet(
+            "font-size: 18px; padding: 6px; background-color: #5DA3FA;"
+            "border-radius: 6px; color: white;"
+        )
+        self.btn_load.clicked.connect(self.load_image)
+
+        # 布局
+        layout_main = QVBoxLayout()
+        layout_main.addWidget(self.lb_img)
+
+        layout_bottom = QHBoxLayout()
+        layout_bottom.addStretch()
+        layout_bottom.addWidget(self.btn_load)
+        layout_bottom.addStretch()
+
+        layout_main.addLayout(layout_bottom)
+
+        container = QWidget()
+        container.setLayout(layout_main)
+        self.setCentralWidget(container)
+
+    # --------------------------------------------------
     # 选择图片
-    # --------------------------------------------------------
-    def init_image_base(self):
-        return cv.imread(self.get_image())
+    # --------------------------------------------------
+    def load_image(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择图片", "", "Images (*.jpg *.png *.jpeg)"
+        )
+        if path:
+            self.image_cv = cv.imread(path)
+            self.matrix_global = np.identity(3, dtype=np.float32)
+            self.refresh_image()
 
-    # --------------------------------------------------------
+    # --------------------------------------------------
     # 刷新图像显示
-    # --------------------------------------------------------
+    # --------------------------------------------------
     def refresh_image(self):
-        W = self.W_show
-        H = self.H_show
+        if self.image_cv is None:
+            return
 
-        # 透视变换（核心）
-        image_show = cv.warpPerspective(
+        H = self.lb_img.height()
+        W = self.lb_img.width()
+
+        warped = cv.warpPerspective(
             self.image_cv,
             self.matrix_global,
             (W, H),
             flags=cv.INTER_NEAREST
         )
 
-        # 转成 QPixmap 显示
-        qimg_show = QImage(
-            np.ascontiguousarray(image_show).data,
+        qimg = QImage(
+            warped.data,
             W,
             H,
             QImage.Format.Format_BGR888
         )
-        qpixm_show = QPixmap(qimg_show)
-        self.lb_img.setPixmap(qpixm_show)
+        self.lb_img.setPixmap(QPixmap(qimg))
 
-    # --------------------------------------------------------
-    # 鼠标按下：开始拖动 or RGB 采样准备
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # 鼠标按下：拖动开始
+    # --------------------------------------------------
     def mousePressEvent(self, e: QMouseEvent):
+        if self.image_cv is None:
+            return
         self.dragging = True
         self.last_mouse_pos = np.array([e.pos().x(), e.pos().y()])
-        return
 
-    # --------------------------------------------------------
-    # 鼠标松开：结束拖动
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # 鼠标松开：拖动结束
+    # --------------------------------------------------
     def mouseReleaseEvent(self, e: QMouseEvent):
         self.dragging = False
-        return
 
-    # --------------------------------------------------------
-    # 鼠标移动：图片平移
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # 鼠标移动：拖动平移
+    # --------------------------------------------------
     def mouseMoveEvent(self, e: QMouseEvent):
-        if not self.dragging:
+        if self.image_cv is None or not self.dragging:
             return
 
         now = np.array([e.pos().x(), e.pos().y()])
@@ -108,85 +134,67 @@ class Image_Viewer_Base(QMainWindow):
         self.last_mouse_pos = now
 
         dx, dy = delta
-
-        # 平移矩阵 T
         T = np.array([
             [1, 0, dx],
             [0, 1, dy],
             [0, 0, 1]
         ], dtype=np.float32)
 
-        # 左乘
         self.matrix_global = T @ self.matrix_global
         self.refresh_image()
 
-    # --------------------------------------------------------
-    # 鼠标双击：输出 RGB 值
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # 双击输出 RGB
+    # --------------------------------------------------
     def mouseDoubleClickEvent(self, e: QMouseEvent):
+        if self.image_cv is None:
+            return
+
         win_x, win_y = e.pos().x(), e.pos().y()
-        p_win = np.array([win_x, win_y, 1], dtype=np.float32)
+        p = np.array([win_x, win_y, 1])
 
-        # 反变换找原图坐标
         invM = np.linalg.inv(self.matrix_global)
-        p_img = invM @ p_win
-        x, y = int(p_img[0]), int(p_img[1])
+        x_img, y_img, _ = invM @ p
 
-        if 0 <= x < self.image_cv.shape[1] and 0 <= y < self.image_cv.shape[0]:
-            b, g, r = self.image_cv[y, x]
+        x_img = int(x_img)
+        y_img = int(y_img)
+
+        if 0 <= x_img < self.image_cv.shape[1] and 0 <= y_img < self.image_cv.shape[0]:
+            b, g, r = self.image_cv[y_img, x_img]
             print(f"RGB = ({r}, {g}, {b})")
         else:
-            print("点击位置不在图像内")
+            print("图像范围外")
 
-    # --------------------------------------------------------
-    # 滚轮缩放：以鼠标为中心放缩
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # 滚轮缩放：以鼠标为中心
+    # --------------------------------------------------
     def wheelEvent(self, e: QWheelEvent):
-        x, y = e.position().x(), e.position().y()
+        if self.image_cv is None:
+            return
 
-        # 缩放倍数
-        zoom = 1.1 if e.angleDelta().y() > 0 else 0.9
+        x = e.position().x()
+        y = e.position().y()
 
-        # 平移到原点
-        T1 = np.array([
-            [1, 0, -x],
-            [0, 1, -y],
-            [0, 0, 1]
-        ], dtype=np.float32)
+        scale = 1.1 if e.angleDelta().y() > 0 else 0.9
 
-        # 缩放矩阵
-        S = np.array([
-            [zoom, 0, 0],
-            [0, zoom, 0],
-            [0, 0, 1]
-        ], dtype=np.float32)
+        T1 = np.array([[1, 0, -x],
+                       [0, 1, -y],
+                       [0, 0, 1]], dtype=np.float32)
 
-        # 平移回去
-        T2 = np.array([
-            [1, 0, x],
-            [0, 1, y],
-            [0, 0, 1]
-        ], dtype=np.float32)
+        S = np.array([[scale, 0, 0],
+                      [0, scale, 0],
+                      [0, 0, 1]], dtype=np.float32)
 
-        # 合成
+        T2 = np.array([[1, 0, x],
+                       [0, 1, y],
+                       [0, 0, 1]], dtype=np.float32)
+
         self.matrix_global = T2 @ S @ T1 @ self.matrix_global
         self.refresh_image()
 
-    # --------------------------------------------------------
-    # 打开文件对话框
-    # --------------------------------------------------------
-    def get_image(self):
-        img_name, ____ = QFileDialog.getOpenFileName(
-            self,
-            'Open Image File',
-            '',
-            '*.jpg;;*.png;;*.jpeg'
-        )
-        return img_name
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    im = Image_Viewer_Base()
-    im.show()
+    viewer = ImageViewer()
+    viewer.show()
     sys.exit(app.exec())
