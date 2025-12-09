@@ -1,0 +1,44 @@
+# house.mtl - 童话小屋材质库
+
+newmtl HouseWall
+Ka 0.2 0.2 0.2       # 环境光颜色
+Kd 0.8 0.7 0.6       # 漫反射颜色（砖墙）
+Ks 0.1 0.1 0.1       # 高光
+Ns 10                # 光滑度
+# map_Kd wall.jpg     # 如果有墙体纹理，取消注释并替换文件名
+
+newmtl RoofTiles
+Ka 0.2 0.2 0.2
+Kd 0.6 0.1 0.1       # 红色瓦片
+Ks 0.2 0.2 0.2
+Ns 20
+# map_Kd roof.jpg
+
+newmtl ChimneyBricks
+Ka 0.2 0.2 0.2
+Kd 0.7 0.2 0.2       # 烟囱砖红
+Ks 0.1 0.1 0.1
+Ns 15
+# map_Kd chimney.jpg
+
+newmtl DoorWood
+Ka 0.2 0.2 0.2
+Kd 0.5 0.3 0.1       # 木门颜色
+Ks 0.2 0.2 0.2
+Ns 25
+# map_Kd door.jpg
+
+newmtl WindowGlass
+Ka 0.2 0.2 0.2
+Kd 0.7 0.9 1.0       # 浅蓝玻璃
+Ks 0.5 0.5 0.5
+Ns 50
+d 0.5                 # 半透明
+# map_Kd window.png
+
+newmtl DoorMetal
+Ka 0.2 0.2 0.2
+Kd 0.7 0.7 0.7       # 金属灰
+Ks 0.6 0.6 0.6
+Ns 50
+# map_Kd step.jpg
