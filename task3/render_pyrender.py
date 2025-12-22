@@ -26,7 +26,7 @@ def clean_obj(obj_path, tmp_path="__clean.obj"):
             line = line.strip()
             if line.startswith(("v ", "vt ", "vn ", "f ", "mtllib ", "usemtl ")):
                 if '#' in line:
-                    line = line.split('#')[0].rstrip()
+                     line = line.split('#', 1)[0].rstrip()
                 fout.write(line + "\n")
     return tmp_path
 
