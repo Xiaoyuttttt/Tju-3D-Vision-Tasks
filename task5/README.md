@@ -1,14 +1,14 @@
-# 实验最终获取obj文件：Tju-3D-Vision-Tasks\task5\final_fitted_smpl.obj
+# 实验最终获取obj文件路径：Tju-3D-Vision-Tasks\task5\final_fitted_smpl.obj
 
 ---
 
 ### 🖼️ 实验最终效果
-![实验最终效果](./task5/image.png)
+![实验最终效果](./image.png)
 
 ---
 
 ### 📊 实验拟合评估
-![实验拟合评估](./task5/result.png)
+![实验拟合评估](./result.png)
 
 # 人体动作捕捉与SMPL模型 (mocap and SMPL model)
 
